@@ -2,13 +2,16 @@ FROM ubuntu:20.04
 
 RUN apt-get -y update
 RUN apt-get install -y python python3 python3-distutils git wget gcc make g++ build-essential libz-dev zlib1g-dev vim zsh htop unzip curl
+RUN apt-get install -y jq
 
 # Clone all the repositories
 RUN git clone https://github.com/graalvm/mx.git
+RUN git clone https://github.com/FudanSELab/train-ticket.git
 RUN git clone https://github.com/cloudhubs/graal.git
 RUN git clone https://github.com/cloudhubs/graal-prophet-utils.git
 RUN git clone https://github.com/cloudhubs/graal_mvp.git
-RUN git clone https://github.com/FudanSELab/train-ticket.git
+
+ENV MS_ROOT "/train-ticket"
 
 # Download and setup appropriate JDK version with JVMCI
 RUN wget https://github.com/graalvm/labs-openjdk-17/releases/download/jvmci-23.0-b22/labsjdk-ce-17.0.9+9-jvmci-23.0-b22-linux-amd64.tar.gz
@@ -32,13 +35,13 @@ ENV PROPHET_PLUGIN_HOME /
 # Compile trainticket
 RUN cd /train-ticket && mvn install -DskipTests=true
 # Unpack the fatjars for simpler processing
-RUN bash /graal-prophet-utils/microservice-setup.sh
+RUN bash /graal-prophet-utils/microservice-setup.sh /graal-prophet-utils/config/trainticket-microservices.json
 
 # Compile and setup graal-prophet-utils
 RUN cd /graal-prophet-utils && mvn clean package -DskipTests=true -X
 
 # Run the analysis
-RUN . /envfile; cd /graal-prophet-utils && $JAVA_HOME/bin/java -jar target/graal-prophet-utils-0.0.8.jar ./config/trainticket-microservices.json true
+RUN . /envfile; cd /graal-prophet-utils && $JAVA_HOME/bin/java -jar target/graal-prophet-utils-0.0.8.jar ./config/trainticket-microservices.json
 
 # Copy the output files to the visualizer's data folder, so that they are loaded by default
 RUN cp /graal-prophet-utils/output_trainticket/entities.json /graal_mvp/frontend/src/data/contextMap.json
